@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import './LongTaskOnPointerEvent.css';
 
 export default function PointerPerformanceLab() {
@@ -11,7 +11,6 @@ export default function PointerPerformanceLab() {
   const [eventCount, setEventCount] = useState(0);
   const [lastEventTime, setLastEventTime] = useState(0);
   const [avgEventDelay, setAvgEventDelay] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
   const [longTasks, setLongTasks] = useState(0);
   
   const lastFrameTime = useRef(performance.now());
@@ -97,6 +96,9 @@ export default function PointerPerformanceLab() {
         requestAnimationFrame(() => {
           doExpensiveWork(expensiveMs);
         });
+        break;
+
+      default:
         break;
     }
   };
