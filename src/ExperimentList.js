@@ -7,6 +7,11 @@ function ExperimentList() {
       name: 'Counter',
       path: '/experiment/counter',
       imageUrl: 'https://picsum.photos/seed/counter/300/200'
+    },
+        {
+      name: 'Long task on pointer events',
+      path: '/experiment/longtaskonpointerevents',
+      imageUrl: 'https://picsum.photos/seed/longtaskonpointerevents/300/200'
     }
   ];
 
