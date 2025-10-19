@@ -12,6 +12,11 @@ function ExperimentList() {
       name: 'Long task on pointer events',
       path: '/experiment/longtaskonpointerevents',
       imageUrl: 'https://picsum.photos/seed/longtaskonpointerevents/300/200'
+    },
+    {
+      name: 'Canvas 2D vs WebGL Whiteboard',
+      path: '/experiment/whiteboardcomparison',
+      imageUrl: 'https://picsum.photos/seed/whiteboardcomparison/300/200'
     }
   ];
 

@@ -3,6 +3,7 @@ import './App.css';
 import ExperimentList from './ExperimentList';
 import Counter from './experiments/Counter';
 import LongTaskOnPointerEvent from './experiments/LongTaskOnPointerEvent';
+import WhiteboardComparison from './experiments/WhiteboardComparison';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
           <Route path="/" element={<ExperimentList />} />
           <Route path="/experiment/counter" element={<Counter />} />
           <Route path="/experiment/longtaskonpointerevents" element={<LongTaskOnPointerEvent />} />
+          <Route path="/experiment/whiteboardcomparison" element={<WhiteboardComparison />} />
         </Routes>
       </div>
     </BrowserRouter>
