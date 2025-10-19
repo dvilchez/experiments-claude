@@ -19,6 +19,8 @@ export default function PointerPerformanceLab() {
   const eventDelays = useRef([]);
   const lastPointerTime = useRef(0);
   const drawPathRef = useRef([]);
+  const eventBuffer = useRef([]);
+  const rafPending = useRef(false);
 
   // Expensive operation simulator
   const doExpensiveWork = (ms) => {
@@ -102,19 +104,70 @@ export default function PointerPerformanceLab() {
   const getCoords = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    
+
     // Get display coordinates
     const displayX = e.clientX - rect.left;
     const displayY = e.clientY - rect.top;
-    
+
     // Scale to canvas internal coordinates
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    
+
     return {
       x: displayX * scaleX,
       y: displayY * scaleY
     };
+  };
+
+  const processBufferedEvents = () => {
+    const events = eventBuffer.current;
+    if (events.length === 0) {
+      rafPending.current = false;
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    events.forEach(e => {
+      const now = performance.now();
+      const delay = now - lastPointerTime.current;
+
+      eventDelays.current.push(delay);
+      if (eventDelays.current.length > 30) {
+        eventDelays.current.shift();
+      }
+      const avg = eventDelays.current.reduce((a, b) => a + b, 0) / eventDelays.current.length;
+      setAvgEventDelay(Math.round(avg));
+      setLastEventTime(Math.round(delay));
+      setEventCount(prev => prev + 1);
+
+      lastPointerTime.current = now;
+
+      const coalescedEvents = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+
+      coalescedEvents.forEach(event => {
+        const coords = getCoords(event);
+        const lastPoint = drawPathRef.current[drawPathRef.current.length - 1];
+
+        ctx.beginPath();
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(coords.x, coords.y);
+        ctx.strokeStyle = expensiveMs > 0 ? '#ef4444' : '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        drawPathRef.current.push(coords);
+      });
+    });
+
+    if (expensiveMs > 0) {
+      doExpensiveWork(expensiveMs);
+    }
+
+    eventBuffer.current = [];
+    rafPending.current = false;
   };
 
   const handlePointerDown = (e) => {
@@ -127,10 +180,19 @@ export default function PointerPerformanceLab() {
   const handlePointerMove = (e) => {
     if (!isDrawing) return;
 
+    if (workType === 'batched') {
+      eventBuffer.current.push(e);
+
+      if (!rafPending.current) {
+        rafPending.current = true;
+        requestAnimationFrame(processBufferedEvents);
+      }
+      return;
+    }
+
     const now = performance.now();
     const delay = now - lastPointerTime.current;
-    
-    // Track event timing
+
     eventDelays.current.push(delay);
     if (eventDelays.current.length > 30) {
       eventDelays.current.shift();
@@ -139,20 +201,18 @@ export default function PointerPerformanceLab() {
     setAvgEventDelay(Math.round(avg));
     setLastEventTime(Math.round(delay));
     setEventCount(prev => prev + 1);
-    
+
     lastPointerTime.current = now;
 
-    // Get all coalesced events if available
     const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-    
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    
-    // Draw each coalesced point
+
     events.forEach(event => {
       const coords = getCoords(event);
       const lastPoint = drawPathRef.current[drawPathRef.current.length - 1];
-      
+
       ctx.beginPath();
       ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(coords.x, coords.y);
@@ -160,17 +220,18 @@ export default function PointerPerformanceLab() {
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
       ctx.stroke();
-      
+
       drawPathRef.current.push(coords);
     });
 
-    // Do expensive work AFTER drawing
     handleExpensiveWork();
   };
 
   const handlePointerUp = () => {
     setIsDrawing(false);
     drawPathRef.current = [];
+    eventBuffer.current = [];
+    handleExpensiveWork();
   };
 
   const clearCanvas = () => {
@@ -180,6 +241,7 @@ export default function PointerPerformanceLab() {
     setEventCount(0);
     setLongTasks(0);
     eventDelays.current = [];
+    eventBuffer.current = [];
   };
 
   const getFpsColor = () => {
@@ -237,12 +299,14 @@ export default function PointerPerformanceLab() {
                 <option value="microtask">Microtask (Promise)</option>
                 <option value="task">Task (setTimeout)</option>
                 <option value="raf">requestAnimationFrame</option>
+                <option value="batched">Batched (multiple events per task)</option>
               </select>
               <p className="control-help">
                 {workType === 'sync' && 'Blocks rendering immediately - most janky'}
                 {workType === 'microtask' && 'Runs before render - still blocks'}
                 {workType === 'task' && 'Allows render between - less janky'}
                 {workType === 'raf' && 'Runs before paint - blocks that frame'}
+                {workType === 'batched' && 'Groups events in rAF - multiple events per task'}
               </p>
             </div>
           </div>
